@@ -1,0 +1,13 @@
+[package]
+name = "todo-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = "4.5.59"
+serde = "1.0.228"
+serde_json = "1.0.149"
+chrono = "0.4.43"
+thiserror = "2.0.18"
+uuid = { version = "1.21.0", features = ["v4"] }
+tempfile = "3.25.0"
