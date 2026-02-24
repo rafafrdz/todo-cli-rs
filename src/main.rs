@@ -1,9 +1,8 @@
 use clap::Parser;
 use todo_cli::tasks::adapters::cli::cli_command::{Cli, TodoCommand};
 use todo_cli::tasks::adapters::cli::errors::CliResult;
-use todo_cli::tasks::adapters::persistence::json_file_task_repository::{
-    JsonFileTaskRepository, TasksFile,
-};
+use todo_cli::tasks::adapters::cli::printer::{print_delete, print_task, print_tasks};
+use todo_cli::tasks::adapters::persistence::json_file_task_repository::JsonFileTaskRepository;
 use todo_cli::tasks::application::errors::ApplicationError;
 use todo_cli::tasks::application::use_cases::add_task::{
     AddTaskCommand, AddTaskService, AddTaskUseCase,
@@ -64,48 +63,27 @@ fn run() -> CliResult<()> {
         TodoCommand::Add { title } => {
             let mut add_service = AddTaskService::new(repository);
             let task: Task = add_service.execute(AddTaskCommand::new(title))?;
-            println!("{}", serde_json::to_string(&task)?);
-            Ok(())
+            print_task(&task, cli.output)
         }
         TodoCommand::List { status } => {
             let list_service = ListTasksService::new(repository);
             let tasks: Vec<Task> = list_service.execute(ListTasksCommand::from(status))?;
-            let task_file: TasksFile = TasksFile::from(tasks);
-            println!("{}", serde_json::to_string(&task_file)?);
-            Ok(())
+            print_tasks(&tasks, cli.output)
         }
         TodoCommand::Done { id } => {
             let mut mark_task_done_service = MarkTaskDoneService::new(repository);
             let task = mark_task_done_service.execute(MarkTaskDoneCommand::new(id))?;
-            println!(
-                "updated task: id={} status={:?} title={}",
-                task.task_id(),
-                task.status(),
-                task.title()
-            );
-            Ok(())
+            print_task(&task, cli.output)
         }
         TodoCommand::Todo { id } => {
             let mut mark_task_todo_service = MarkTaskTodoService::new(repository);
             let task = mark_task_todo_service.execute(MarkTaskTodoCommand::new(id))?;
-            println!(
-                "updated task: id={} status={:?} title={}",
-                task.task_id(),
-                task.status(),
-                task.title()
-            );
-            Ok(())
+            print_task(&task, cli.output)
         }
         TodoCommand::Delete { id } => {
             let mut delete_service = DeleteTaskService::new(repository);
             let deleted = delete_service.execute(DeleteTaskCommand::new(id))?;
-            if deleted {
-                println!("deleted {id}");
-                Ok(())
-            } else {
-                println!("task {id} not found");
-                Ok(())
-            }
+            print_delete(id.to_string(), deleted, cli.output)
         }
     }
 }
