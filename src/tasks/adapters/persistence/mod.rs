@@ -1,1 +1,2 @@
 pub mod in_memory_task_repository;
+pub mod json_file_task_repository;

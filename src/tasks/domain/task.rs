@@ -1,8 +1,9 @@
 use crate::tasks::domain::errors::{DomainError, DomainResult};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Task {
     id: Uuid,
     title: String,
@@ -11,7 +12,7 @@ pub struct Task {
     modified_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TaskStatus {
     Todo,
     Done,
