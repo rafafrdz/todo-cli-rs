@@ -93,7 +93,8 @@ impl TaskRepository for JsonFileTaskRepository {
             TaskQuery::All => Ok(tasks),
             TaskQuery::ByStatus(status) => Ok(tasks
                 .iter()
-                .filter(|&t| t.status() == status).cloned()
+                .filter(|&t| t.status() == status)
+                .cloned()
                 .collect()),
         }
     }

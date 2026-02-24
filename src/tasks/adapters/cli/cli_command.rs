@@ -1,6 +1,6 @@
+use crate::tasks::application::use_cases::list_tasks::{FilterTask, ListTasksCommand};
 use clap::{Parser, Subcommand, ValueEnum};
 use uuid::Uuid;
-use crate::tasks::application::use_cases::list_tasks::{FilterTask, ListTasksCommand};
 
 #[derive(Debug, Parser)]
 #[command(name = "todo", version, about = "Manage tasks from the terminal")]
