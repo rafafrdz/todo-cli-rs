@@ -7,7 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JsonFileTaskRepository {
     file_path: PathBuf,
 }
@@ -93,15 +93,14 @@ impl TaskRepository for JsonFileTaskRepository {
             TaskQuery::All => Ok(tasks),
             TaskQuery::ByStatus(status) => Ok(tasks
                 .iter()
-                .cloned()
-                .filter(|t| t.status() == status)
+                .filter(|&t| t.status() == status).cloned()
                 .collect()),
         }
     }
 
     fn find_by_id(&self, id: Uuid) -> RepoResult<Option<Task>> {
         let TasksFile { tasks } = self.read_task_file()?;
-        Ok(tasks.iter().cloned().find(|t| t.task_id() == id))
+        Ok(tasks.iter().find(|&t| t.task_id() == id).cloned())
     }
 
     fn delete(&mut self, id: Uuid) -> RepoResult<bool> {
@@ -118,16 +117,14 @@ impl TaskRepository for JsonFileTaskRepository {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct TasksFile {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct TasksFile {
     tasks: Vec<Task>,
 }
 
-impl Default for TasksFile {
-    fn default() -> Self {
-        TasksFile {
-            tasks: Vec::default(),
-        }
+impl From<Vec<Task>> for TasksFile {
+    fn from(value: Vec<Task>) -> Self {
+        Self { tasks: value }
     }
 }
 
