@@ -130,3 +130,110 @@ impl Default for TasksFile {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::JsonFileTaskRepository;
+    use crate::tasks::domain::task::{Task, TaskStatus};
+    use crate::tasks::ports::outputs::task_repository::{TaskQuery, TaskRepository};
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn new_task(title: &str) -> Task {
+        Task::new(title.to_string()).expect("task should be created")
+    }
+
+    #[test]
+    fn save_creates_file_and_persists_task() {
+        let temp = tempdir().expect("temp dir should be created");
+        let file_path = temp.path().join("tasks.json");
+        let mut repo = JsonFileTaskRepository::using(file_path.clone());
+
+        let task = new_task("learn rust");
+        let id = task.task_id();
+
+        repo.save(task).expect("save should succeed");
+
+        assert!(file_path.exists());
+        let found = repo.find_by_id(id).expect("find should succeed");
+        assert!(found.is_some());
+    }
+
+    #[test]
+    fn list_all_returns_tasks_persisted_on_disk() {
+        let temp = tempdir().expect("temp dir should be created");
+        let file_path = temp.path().join("tasks.json");
+        let mut repo = JsonFileTaskRepository::using(file_path);
+
+        repo.save(new_task("task 1")).expect("save should succeed");
+        repo.save(new_task("task 2")).expect("save should succeed");
+
+        let all = repo.list(TaskQuery::All).expect("list should succeed");
+        assert_eq!(all.len(), 2);
+    }
+
+    #[test]
+    fn list_by_status_filters_tasks() {
+        let temp = tempdir().expect("temp dir should be created");
+        let file_path = temp.path().join("tasks.json");
+        let mut repo = JsonFileTaskRepository::using(file_path);
+
+        let todo = new_task("todo task");
+        let done = new_task("done task")
+            .mark_done()
+            .expect("status transition should succeed");
+
+        repo.save(todo).expect("save should succeed");
+        repo.save(done).expect("save should succeed");
+
+        let done_tasks = repo
+            .list(TaskQuery::ByStatus(TaskStatus::Done))
+            .expect("list should succeed");
+        assert_eq!(done_tasks.len(), 1);
+        assert_eq!(done_tasks[0].status(), TaskStatus::Done);
+    }
+
+    #[test]
+    fn delete_returns_true_for_existing_task_and_false_otherwise() {
+        let temp = tempdir().expect("temp dir should be created");
+        let file_path = temp.path().join("tasks.json");
+        let mut repo = JsonFileTaskRepository::using(file_path);
+
+        let task = new_task("task to delete");
+        let id = task.task_id();
+        repo.save(task).expect("save should succeed");
+
+        let deleted = repo.delete(id).expect("delete should succeed");
+        assert!(deleted);
+
+        let deleted_again = repo.delete(id).expect("delete should succeed");
+        assert!(!deleted_again);
+    }
+
+    #[test]
+    fn data_persists_between_repository_instances() {
+        let temp = tempdir().expect("temp dir should be created");
+        let file_path = temp.path().join("tasks.json");
+
+        let mut writer = JsonFileTaskRepository::using(file_path.clone());
+        let task = new_task("persist me");
+        let id = task.task_id();
+        writer.save(task).expect("save should succeed");
+
+        let reader = JsonFileTaskRepository::using(file_path);
+        let found = reader.find_by_id(id).expect("find should succeed");
+        assert!(found.is_some());
+    }
+
+    #[test]
+    fn invalid_json_returns_error() {
+        let temp = tempdir().expect("temp dir should be created");
+        let file_path = temp.path().join("tasks.json");
+        fs::write(&file_path, "{invalid json").expect("invalid test payload should be written");
+
+        let repo = JsonFileTaskRepository::using(file_path);
+        let result = repo.list(TaskQuery::All);
+
+        assert!(result.is_err());
+    }
+}
