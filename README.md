@@ -4,6 +4,8 @@ A Rust command-line To-Do application built with a clean, layered architecture.
 
 Challenge context: see `CHALLENGE.md`.
 
+Architecture details: see `docs/architecture.md` and `docs/step-1-mvp.md`.
+
 ## Quickstart
 
 ```bash
@@ -75,7 +77,7 @@ Or run the built binary directly:
 ./target/release/todo-cli <command>
 ```
 
-### Output format
+### Selecting output format
 
 The default output format is `table`.
 
@@ -127,11 +129,16 @@ cargo run -- todo <task-uuid>
 cargo run -- delete <task-uuid>
 ```
 
-## Output format
+## Output behavior
 
 - Default format is table for all commands.
 - Use `--output json` for machine-readable output.
-- `delete` in table mode prints either `deleted <id>` or `task <id> not found`.
+- In table mode:
+  - `add`, `list`, `done`, `todo` render tabular rows.
+  - `delete` prints either `deleted <id>` or `task <id> not found`.
+- In JSON mode:
+  - `add`, `list`, `done`, `todo` return serialized task payloads.
+  - `delete` returns a structured object with `id`, `deleted`, and `message`.
 
 Errors are printed to `stderr`, and the process exits with code `1`.
 

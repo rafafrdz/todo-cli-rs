@@ -53,3 +53,4 @@ The challenge can be considered complete when:
 
 - The canonical challenge inspiration is the CodeCrafters article linked above.
 - This repository may evolve beyond the original challenge constraints as a learning and architecture playground.
+- For implementation details, see `README.md`, `docs/architecture.md`, and `docs/step-1-mvp.md`.

@@ -1,89 +1,113 @@
-# Paso 1 - MVP (Hexagonal + Screaming)
+# Step 1 - MVP (Hexagonal + Screaming)
 
-1) Contexto y objetivo
-- Proyecto: CLI To-Do en Rust
-- Arquitectura objetivo: Hexagonal + Screaming Architecture
-- Objetivo MVP: gestionar tareas desde terminal con persistencia local
-- No objetivo (por ahora): sync en la nube, multiusuario, UI TUI compleja
+This document now reflects the implemented result of Step 1.
 
-2) Casos de uso del MVP (input ports)
-   Define cada caso con intención + resultado.
-- AddTask
-    - Entrada: title
-    - Regla: título no vacío
-    - Resultado: tarea creada con id único y estado Todo
-- ListTasks
-    - Entrada: filtro opcional (all|todo|done)
-    - Resultado: listado de tareas
-- MarkTaskDone
-    - Entrada: id
-    - Regla: debe existir
-    - Resultado: estado cambia a Done
-- DeleteTask
-    - Entrada: id
-    - Regla: debe existir
-    - Resultado: tarea eliminada
-3) Modelo de dominio (borrador)
-- Entidad Task
-    - id: u64
-    - title: String
-    - status: Todo | Done
-    - created_at: DateTime (opcional en MVP si quieres simplificar)
-    - deadline: Option<Date> (futuro)
-    - repeat: Option<RepeatRule> (futuro)
-      Decisión inicial recomendada:
-- IDs incrementales (u64) para no complicar UX del CLI al principio.
-4) Reglas de negocio
-- No se permite título vacío.
-- id debe ser único.
-- Marcar/eliminar una tarea inexistente devuelve error de dominio explícito.
-- list sin filtro devuelve todas.
-5) Diseño hexagonal (puertos y adaptadores)
-- Input ports (driving):
-    - TaskCommandService o casos de uso separados (AddTaskUseCase, etc.)
-- Output ports (driven):
-    - TaskRepository (guardar, obtener, buscar por id, borrar)
-- Adapters:
-    - Entrada: CLI adapter (parse args -> invoca casos de uso)
-    - Salida: File JSON adapter (implementa TaskRepository)
-6) Estructura screaming (acordada)
-   src/
-   tasks/
-   domain/
-   application/
-   ports/
-   adapters/
-   cli/
-   persistence/
-   Notas:
-- tasks es la raíz “que grita” el dominio.
-- Evita src/core, src/utils genéricos al inicio (suelen esconder responsabilidades).
-7) Contrato CLI (UX mínima)
-   Define sintaxis esperada:
-- todo add "Comprar leche"
-- todo list
-- todo list --status todo
-- todo done 3
-- todo delete 3
-  Define también:
-- Mensajes de éxito (1 línea)
-- Mensajes de error (claros y accionables)
-8) Persistencia (MVP)
-- Archivo: .todo/tasks.json
-- Si no existe: crear o tratar como vacío.
-- Guardar después de operaciones mutantes (add/done/delete).
-- Error de JSON inválido: mensaje claro + no perder datos silenciosamente.
-9) Errores (taxonomía mínima)
-- ValidationError (ej. title vacío)
-- NotFound (id inexistente)
-- PersistenceError (lectura/escritura/parsing)
-- CliInputError (comando/argumento inválido)
-10) Definition of Done (Paso 1)
-    Marca ✅ cuando esté cerrado:
-- [ ] Casos de uso MVP definidos
-- [ ] Reglas de negocio mínimas definidas
-- [ ] Puertos de entrada/salida identificados
-- [ ] Adaptadores CLI + File definidos
-- [ ] Estructura screaming acordada
-- [ ] Contrato de comandos CLI documentado
-- [ ] Estrategia de persistencia y errores definida
+## 1) Context and Goal
+
+- Project: Rust To-Do CLI
+- Target architecture: Hexagonal + Screaming Architecture
+- MVP goal: manage tasks from terminal with local persistence
+- Out of scope for now: cloud sync, multi-user support, advanced TUI
+
+## 2) Implemented Use Cases (Input Ports)
+
+- `AddTask`
+  - Input: `title`
+  - Rule: title cannot be blank
+  - Result: task created with unique ID and `Todo` status
+- `ListTasks`
+  - Input: optional status filter (`all|todo|done`)
+  - Result: matching tasks
+- `MarkTaskDone`
+  - Input: `id`
+  - Rule: task must exist and transition must be valid
+  - Result: status becomes `Done`
+- `MarkTaskTodo`
+  - Input: `id`
+  - Rule: task must exist and transition must be valid
+  - Result: status becomes `Todo`
+- `DeleteTask`
+  - Input: `id`
+  - Result: boolean deleted/not-found outcome
+
+## 3) Domain Model (Implemented)
+
+- Entity: `Task`
+  - `id: Uuid`
+  - `title: String`
+  - `status: TaskStatus` (`Todo | Done`)
+  - `created_at: DateTime<Utc>`
+  - `modified_at: DateTime<Utc>`
+
+Domain transitions are immutable and return `DomainResult<Self>`.
+
+## 4) Business Rules
+
+- Empty titles are rejected.
+- IDs are unique (`Uuid`).
+- Invalid transitions return explicit domain errors.
+- `created_at` remains stable across transitions.
+- `modified_at` updates on successful transitions.
+
+## 5) Hexagonal Design (Ports and Adapters)
+
+- Input adapter:
+  - CLI (clap) parses arguments and invokes use cases
+- Output port:
+  - `TaskRepository` (`save`, `list`, `find_by_id`, `delete`)
+- Output adapter:
+  - JSON file repository (`JsonFileTaskRepository`)
+
+## 6) Screaming Structure
+
+```text
+src/
+  tasks/
+    domain/
+    application/
+      use_cases/
+    ports/
+      outputs/
+    adapters/
+      cli/
+      persistence/
+```
+
+## 7) CLI Contract (Current)
+
+- `todo-cli add "Buy milk"`
+- `todo-cli list`
+- `todo-cli list --status todo`
+- `todo-cli done <uuid>`
+- `todo-cli todo <uuid>`
+- `todo-cli delete <uuid>`
+
+Output mode:
+
+- `--output table|json`
+- default output: `table`
+
+## 8) Persistence (Current)
+
+- JSON file stored in platform config directory under `data/tasks.json`
+- Missing file is treated as empty state
+- Mutating operations persist immediately
+- Invalid JSON surfaces explicit repository errors
+
+## 9) Error Taxonomy
+
+- `DomainError`: validation and transition rules
+- `RepoError`: persistence/read/write/parse failures
+- `ApplicationError`: domain + repository orchestration errors
+- `CliError`: application + serialization for CLI output
+
+## 10) Definition of Done (Step 1)
+
+- [x] MVP use cases implemented
+- [x] Domain rules enforced
+- [x] Ports and adapters defined and wired
+- [x] CLI adapter implemented with clap
+- [x] JSON file persistence implemented
+- [x] Command contract documented
+- [x] Output format toggle (`table` default, `json` optional)
+- [x] Automated tests passing
