@@ -1,55 +1,159 @@
 # ToDo CLI
 
-A Rust command-line To-Do application focused on clean architecture and learning-by-building.
+A Rust command-line To-Do application built with a clean, layered architecture.
 
-This project is intentionally being developed step by step with:
-- Hexagonal Architecture (Ports and Adapters)
-- Screaming Architecture (feature-first folders)
-- Strong domain modeling and explicit error handling
+## Quickstart
 
-This project is based on the beginner Rust challenge ideas shared by `CodeCrafters`:
-https://codecrafters.io/blog/rust-projects
+```bash
+# Add a task
+cargo run -- add "Buy milk"
 
-## Project Goals
+# List tasks
+cargo run -- list
 
-- Add, list, complete, and delete tasks from the terminal
-- Persist tasks to disk (JSON)
-- Keep behavior predictable through domain rules
-- Practice Rust fundamentals: file I/O, error handling, testing, and iterators
+# Mark a task as done
+cargo run -- done <task-uuid>
+```
 
-## Architecture
+## Features
 
-Design principles used:
-- Domain is independent of infrastructure details.
-- Use cases orchestrate ports and domain logic.
-- Adapters implement I/O concerns (CLI, filesystem, serialization).
+- Add tasks
+- List tasks (`all`, `todo`, `done`)
+- Mark tasks as `done`
+- Mark tasks back to `todo`
+- Delete tasks
+- Persist tasks to a local JSON file
 
-## Getting Started
+## Requirements
 
-### Prerequisites
 - Rust stable toolchain
 - Cargo
 
-### Build / Check
+## Build and Development
+
+Run commands from the repository root.
+
+### Fast checks
 
 ```bash
 cargo check
-```
-
-### Run tests
-
-```bash
 cargo test
 ```
 
-## Roadmap (MVP)
+### Build binary
 
-1. Add task
-2. List tasks (all / todo / done)
-3. Mark task as done
-4. Delete task
-5. Persist tasks in local JSON file
+```bash
+cargo build --release
+```
 
-## Why this project?
+The binary will be available at:
 
-This repo is meant to be a practical Rust learning project with production-style architectural discipline from day one.
+```bash
+target/release/todo-cli
+```
+
+### Quality checks
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+## Usage
+
+You can run the app with `cargo run` during development:
+
+```bash
+cargo run -- <command>
+```
+
+Or run the built binary directly:
+
+```bash
+./target/release/todo-cli <command>
+```
+
+### Commands
+
+#### Add a task
+
+```bash
+cargo run -- add "Buy milk"
+```
+
+#### List tasks
+
+List all tasks (default):
+
+```bash
+cargo run -- list
+```
+
+List by status:
+
+```bash
+cargo run -- list --status todo
+cargo run -- list --status done
+```
+
+#### Mark task as done
+
+```bash
+cargo run -- done <task-uuid>
+```
+
+#### Mark task back to todo
+
+```bash
+cargo run -- todo <task-uuid>
+```
+
+#### Delete a task
+
+```bash
+cargo run -- delete <task-uuid>
+```
+
+## Output format
+
+- `add` and `list` print JSON output.
+- `done` and `todo` print a human-readable summary of the updated task.
+- `delete` prints either:
+  - `deleted <id>`
+  - `task <id> not found`
+
+Errors are printed to `stderr`, and the process exits with code `1`.
+
+## Data storage
+
+Tasks are persisted in a JSON file managed through the platform-specific project config directory (via the `directories` crate), under a `data/tasks.json` path.
+
+## Architecture
+
+This project follows:
+
+- Hexagonal Architecture (Ports and Adapters)
+- Screaming Architecture (feature-first folders)
+
+High-level design:
+
+- `domain`: business rules and task state transitions
+- `application/use_cases`: orchestration of domain + repository ports
+- `ports`: interfaces for driven adapters
+- `adapters`: CLI and persistence implementations
+
+## Running a single test
+
+Useful during iteration:
+
+```bash
+cargo test save_and_find_by_id_returns_task
+cargo test tasks::adapters::persistence::in_memory_task_repository::tests::save_and_find_by_id_returns_task
+cargo test --lib in_memory_task_repository
+```
+
+With output visible:
+
+```bash
+cargo test <pattern> -- --nocapture
+```

@@ -76,23 +76,34 @@ fn run() -> CliResult<()> {
         }
         TodoCommand::Done { id } => {
             let mut mark_task_done_service = MarkTaskDoneService::new(repository);
-            let _ = mark_task_done_service.execute(MarkTaskDoneCommand::new(id))?;
-            println!("done command received (id={id})");
+            let task = mark_task_done_service.execute(MarkTaskDoneCommand::new(id))?;
+            println!(
+                "updated task: id={} status={:?} title={}",
+                task.task_id(),
+                task.status(),
+                task.title()
+            );
             Ok(())
         }
         TodoCommand::Todo { id } => {
             let mut mark_task_todo_service = MarkTaskTodoService::new(repository);
-            let _ = mark_task_todo_service.execute(MarkTaskTodoCommand::new(id))?;
-            println!("todo command received (id={id})");
+            let task = mark_task_todo_service.execute(MarkTaskTodoCommand::new(id))?;
+            println!(
+                "updated task: id={} status={:?} title={}",
+                task.task_id(),
+                task.status(),
+                task.title()
+            );
             Ok(())
         }
         TodoCommand::Delete { id } => {
             let mut delete_service = DeleteTaskService::new(repository);
             let deleted = delete_service.execute(DeleteTaskCommand::new(id))?;
             if deleted {
-                println!("delete command received (id={id})");
+                println!("deleted {id}");
                 Ok(())
             } else {
+                println!("task {id} not found");
                 Ok(())
             }
         }
