@@ -1,11 +1,11 @@
 use crate::tasks::adapters::tui::app::{App, InputMode};
 use crate::tasks::domain::task::TaskStatus;
 use crate::tasks::ports::outputs::task_repository::TaskRepository;
-use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Row, Table, TableState};
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Row, Table, TableState};
+use ratatui::Frame;
 
 pub fn draw<R: TaskRepository>(frame: &mut Frame, app: &App<R>, table_state: &mut TableState) {
     let layout = Layout::vertical([
@@ -19,6 +19,9 @@ pub fn draw<R: TaskRepository>(frame: &mut Frame, app: &App<R>, table_state: &mu
     render_table(frame, main, app, table_state);
     render_command(frame, command, app);
     render_status(frame, status, app);
+    if app.input_mode == InputMode::Adding || app.input_mode == InputMode::Editing {
+        render_input_popup(frame, app);
+    }
 }
 
 fn render_table<R: TaskRepository>(
@@ -121,26 +124,6 @@ fn render_command<R: TaskRepository>(frame: &mut Frame, area: Rect, app: &App<R>
             Span::styled("[q]", Style::default().fg(Color::Red).bold()),
             Span::raw("uit"),
         ]),
-        InputMode::Adding => Line::from(vec![
-            Span::styled(" New: ", Style::default().fg(Color::Cyan).bold()),
-            Span::styled(app.input_buffer.as_str(), Style::default().fg(Color::White)),
-            Span::styled("_", Style::default().fg(Color::Cyan)),
-            Span::raw("  "),
-            Span::styled("[Enter]", Style::default().fg(Color::Green).bold()),
-            Span::raw(" confirm "),
-            Span::styled("[Esc]", Style::default().fg(Color::Red).bold()),
-            Span::raw(" cancel"),
-        ]),
-        InputMode::Editing => Line::from(vec![
-            Span::styled(" Edit: ", Style::default().fg(Color::Yellow).bold()),
-            Span::styled(app.input_buffer.as_str(), Style::default().fg(Color::White)),
-            Span::styled("_", Style::default().fg(Color::Yellow)),
-            Span::raw("  "),
-            Span::styled("[Enter]", Style::default().fg(Color::Green).bold()),
-            Span::raw(" save "),
-            Span::styled("[Esc]", Style::default().fg(Color::Red).bold()),
-            Span::raw(" cancel"),
-        ]),
         InputMode::ConfirmDelete => Line::from(vec![
             Span::styled(
                 " Delete this task? ",
@@ -151,6 +134,7 @@ fn render_command<R: TaskRepository>(frame: &mut Frame, area: Rect, app: &App<R>
             Span::styled("[n]", Style::default().fg(Color::Red).bold()),
             Span::raw("o"),
         ]),
+        _ => Line::from(vec![]),
     };
     let paragraph = Paragraph::new(line).style(Style::default().bg(Color::Black));
     frame.render_widget(paragraph, area);
@@ -187,4 +171,47 @@ fn render_status<R: TaskRepository>(frame: &mut Frame, area: Rect, app: &App<R>)
     let line = Line::from(spans);
     let paragraph = Paragraph::new(line).style(Style::default().bg(Color::Black));
     frame.render_widget(paragraph, area);
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
+    let vertical = Layout::vertical([
+        Constraint::Percentage((100 - percent_y) / 2),
+        Constraint::Percentage(percent_y),
+        Constraint::Percentage((100 - percent_y) / 2),
+    ])
+    .split(area);
+    let horizontal = Layout::horizontal([
+        Constraint::Percentage((100 - percent_x) / 2),
+        Constraint::Percentage(percent_x),
+        Constraint::Percentage((100 - percent_x) / 2),
+    ])
+    .split(vertical[1]);
+    horizontal[1]
+}
+fn render_input_popup<R: TaskRepository>(frame: &mut Frame, app: &App<R>) {
+    let area = centered_rect(50, 20, frame.area());
+    frame.render_widget(Clear, area);
+    let (title, label_style) = match app.input_mode {
+        InputMode::Adding => (" New Task ", Style::default().fg(Color::Cyan)),
+        InputMode::Editing => (" Edit Task ", Style::default().fg(Color::Yellow)),
+        _ => unreachable!(),
+    };
+    let block = Block::bordered()
+        .title(title)
+        .title_alignment(Alignment::Center)
+        .border_style(label_style);
+    let input_line = Line::from(vec![
+        Span::styled(app.input_buffer.as_str(), Style::default().fg(Color::White)),
+        Span::styled("█", label_style),
+    ]);
+    let help_line = Line::from(vec![
+        Span::styled("[Enter]", Style::default().fg(Color::Green).bold()),
+        Span::raw(" confirm  "),
+        Span::styled("[Esc]", Style::default().fg(Color::Red).bold()),
+        Span::raw(" cancel"),
+    ]);
+    let content = Paragraph::new(vec![Line::raw(""), input_line, Line::raw(""), help_line])
+        .block(block)
+        .alignment(Alignment::Center);
+    frame.render_widget(content, area);
 }

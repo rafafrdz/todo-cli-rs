@@ -3,15 +3,19 @@ use crate::tasks::adapters::tui::errors::TuiResult;
 use crate::tasks::ports::outputs::task_repository::TaskRepository;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 
+use std::time::Duration;
 pub fn handle_events<R: TaskRepository + Clone>(app: &mut App<R>) -> TuiResult<()> {
-    if let Event::Key(key) = event::read()?
-        && key.kind == KeyEventKind::Press
-    {
-        match app.input_mode {
-            InputMode::Normal => handle_normal_mode(app, key)?,
-            InputMode::Adding => handle_adding_mode(app, key)?,
-            InputMode::Editing => handle_editing_mode(app, key)?,
-            InputMode::ConfirmDelete => handle_confirm_delete_mode(app, key)?,
+    // Poll con timeout de 16ms (~60fps)
+    if event::poll(Duration::from_millis(16))? {
+        if let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            match app.input_mode {
+                InputMode::Normal => handle_normal_mode(app, key)?,
+                InputMode::Adding => handle_adding_mode(app, key)?,
+                InputMode::Editing => handle_editing_mode(app, key)?,
+                InputMode::ConfirmDelete => handle_confirm_delete_mode(app, key)?,
+            }
         }
     }
     Ok(())
