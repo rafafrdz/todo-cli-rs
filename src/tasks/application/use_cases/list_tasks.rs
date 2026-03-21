@@ -14,17 +14,17 @@ impl ListTasksCommand {
 pub trait ListTasksUseCase {
     fn execute(&self, cmd: ListTasksCommand) -> ApplicationResult<Vec<Task>>;
 }
-pub struct ListTasksService<R: TaskRepository> {
+pub struct ListTasksService<R: TaskRepository + Clone> {
     repo: R,
 }
 
-impl<R: TaskRepository> ListTasksService<R> {
+impl<R: TaskRepository + Clone> ListTasksService<R> {
     pub fn new(repo: R) -> Self {
         Self { repo }
     }
 }
 
-impl<R: TaskRepository> ListTasksUseCase for ListTasksService<R> {
+impl<R: TaskRepository + Clone> ListTasksUseCase for ListTasksService<R> {
     fn execute(&self, cmd: ListTasksCommand) -> ApplicationResult<Vec<Task>> {
         let task_query: TaskQuery = filter_task_to_query(cmd.filter_task);
         Ok(self.repo.list(task_query)?)
