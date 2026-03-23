@@ -1,6 +1,6 @@
 # ToDo CLI
 
-A Rust command-line To-Do application built with a clean, layered architecture.
+A Rust terminal To-Do application built with a clean, layered architecture and a TUI (Terminal User Interface) powered by [ratatui](https://ratatui.rs/).
 
 Challenge context: see `CHALLENGE.md`.
 
@@ -9,28 +9,24 @@ Architecture details: see `docs/architecture.md` and `docs/step-1-mvp.md`.
 ## Quickstart
 
 ```bash
-# Add a task
-cargo run -- add "Buy milk"
-
-# List tasks
-cargo run -- list
-
-# Mark a task as done
-cargo run -- done <task-uuid>
+cargo run
 ```
+
+The TUI launches immediately. Use keyboard shortcuts to manage your tasks.
 
 ## Features
 
 - Add tasks
-- List tasks (`all`, `todo`, `done`)
-- Mark tasks as `done`
-- Mark tasks back to `todo`
-- Delete tasks
+- Edit task titles
+- List tasks with filters (`all`, `todo`, `done`)
+- Toggle task status between `todo` and `done`
+- Delete tasks with confirmation
 - Persist tasks to a local JSON file
+- Interactive TUI with modal input and status feedback
 
 ## Requirements
 
-- Rust stable toolchain
+- Rust stable toolchain (edition 2024)
 - Cargo
 
 ## Build and Development
@@ -65,82 +61,48 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 ## Usage
 
-You can run the app with `cargo run` during development:
+### Launch
 
 ```bash
-cargo run -- <command>
+cargo run
 ```
 
 Or run the built binary directly:
 
 ```bash
-./target/release/todo-cli <command>
+./target/release/todo-cli
 ```
 
-### Selecting output format
+### Keyboard shortcuts
 
-The default output format is `table`.
+#### Normal mode
 
-Use `--output json` to get JSON instead:
+| Key       | Action                                    |
+|-----------|-------------------------------------------|
+| `a`       | Add a new task (opens input popup)        |
+| `e`       | Edit selected task title (opens input popup) |
+| `d`       | Delete selected task (asks confirmation)  |
+| `x`       | Toggle selected task status (todo/done)   |
+| `f`       | Cycle filter: All -> Done -> Todo -> All  |
+| `j` / `Down`  | Select next task                     |
+| `k` / `Up`    | Select previous task                 |
+| `q`       | Quit                                      |
 
-```bash
-cargo run -- --output json list
-cargo run -- --output json add "Buy milk"
-```
+#### Adding / Editing mode
 
-### Commands
+| Key         | Action              |
+|-------------|---------------------|
+| `Enter`     | Confirm input       |
+| `Esc`       | Cancel              |
+| `Backspace` | Delete character    |
+| Any char    | Append to input     |
 
-#### Add a task
+#### Confirm Delete mode
 
-```bash
-cargo run -- add "Buy milk"
-```
-
-#### List tasks
-
-List all tasks (default):
-
-```bash
-cargo run -- list
-```
-
-List by status:
-
-```bash
-cargo run -- list --status todo
-cargo run -- list --status done
-```
-
-#### Mark task as done
-
-```bash
-cargo run -- done <task-uuid>
-```
-
-#### Mark task back to todo
-
-```bash
-cargo run -- todo <task-uuid>
-```
-
-#### Delete a task
-
-```bash
-cargo run -- delete <task-uuid>
-```
-
-## Output behavior
-
-- Default format is table for all commands.
-- Use `--output json` for machine-readable output.
-- In table mode:
-  - `add`, `list`, `done`, `todo` render tabular rows.
-  - `delete` prints either `deleted <id>` or `task <id> not found`.
-- In JSON mode:
-  - `add`, `list`, `done`, `todo` return serialized task payloads.
-  - `delete` returns a structured object with `id`, `deleted`, and `message`.
-
-Errors are printed to `stderr`, and the process exits with code `1`.
+| Key           | Action          |
+|---------------|-----------------|
+| `y` / `Enter` | Confirm delete |
+| `n` / `Esc`   | Cancel         |
 
 ## Data storage
 
@@ -150,15 +112,40 @@ Tasks are persisted in a JSON file managed through the platform-specific project
 
 This project follows:
 
-- Hexagonal Architecture (Ports and Adapters)
-- Screaming Architecture (feature-first folders)
+- **Hexagonal Architecture** (Ports and Adapters)
+- **Screaming Architecture** (feature-first folders)
 
-High-level design:
+### Layer overview
 
-- `domain`: business rules and task state transitions
-- `application/use_cases`: orchestration of domain + repository ports
-- `ports`: interfaces for driven adapters
-- `adapters`: CLI and persistence implementations
+```
+Adapters (TUI, Persistence) --> Application (Use Cases) --> Ports (Traits) --> Domain (Entities)
+```
+
+| Layer                  | Responsibility                                         |
+|------------------------|--------------------------------------------------------|
+| `domain`               | Business rules, entities, and task state transitions   |
+| `application/use_cases`| Orchestration of domain logic + repository ports       |
+| `ports`                | Trait contracts for driven adapters                    |
+| `adapters/tui`         | Terminal UI (ratatui + crossterm)                      |
+| `adapters/persistence` | In-memory and JSON file repository implementations     |
+
+### Use cases
+
+| Use Case       | Description                                    |
+|----------------|------------------------------------------------|
+| `AddTask`      | Create a new task with a title                 |
+| `EditTask`     | Change the title of an existing task           |
+| `ListTasks`    | List tasks with optional status filter         |
+| `MarkTaskDone` | Transition a task from `Todo` to `Done`        |
+| `MarkTaskTodo` | Transition a task from `Done` to `Todo`        |
+| `DeleteTask`   | Remove a task by ID                            |
+
+### Key design principles
+
+- **Immutable domain transitions**: state changes consume `self` and return `DomainResult<Self>`.
+- **Find-transition-save pattern**: use cases orchestrate `repo.find -> domain_method -> repo.save`.
+- **Typed errors per layer**: `DomainError`, `RepoError`, `ApplicationError`, `TuiError`.
+- **TEA pattern in TUI**: Model (`App`), View (`draw`), Update (`handle_events`).
 
 ## Running a single test
 
@@ -175,3 +162,17 @@ With output visible:
 ```bash
 cargo test <pattern> -- --nocapture
 ```
+
+## Dependencies
+
+| Crate        | Purpose                                |
+|--------------|----------------------------------------|
+| `ratatui`    | TUI framework (widgets, layout)        |
+| `crossterm`  | Terminal backend (raw mode, events)    |
+| `serde`      | Serialization / deserialization        |
+| `serde_json` | JSON persistence format                |
+| `chrono`     | Date/time handling                     |
+| `thiserror`  | Error derive macros                    |
+| `uuid`       | Unique task identifiers (v4)           |
+| `directories`| Platform-specific config paths         |
+| `tempfile`   | Temporary directories for tests        |
